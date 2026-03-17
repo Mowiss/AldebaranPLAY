@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALDEBARANPLAY - Fiche Personnage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Polices */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #0F172A;
+            background-image: radial-gradient(circle at top, #1E293B 0%, transparent 40%);
+        }
+
+        /* Titre en Arial Black */
+        .font-aldebaran {
+            font-family: 'Arial Black', Arial, sans-serif;
+            font-size: 2.25rem;
+            line-height: 1;
+            letter-spacing: -1px;
+            margin: 0;
+            padding: 0;
+            font-weight: 900;
+        }
+        .text-silver {
+            color: #B0B3B8;
+            text-shadow: 3px 3px 0px #000, -1px -1px 0px rgba(255,255,255,0.1);
+        }
+        .text-play-blue {
+            color: #6366F1;
+            text-shadow: 3px 3px 0px #000;
+        }
+
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none; margin: 0;
+        }
+        input[type="number"] { -moz-appearance: textfield; }
+
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+        }
+        .animate-pulse-pv { animation: pulse-red 1.5s infinite; }
+
+        /* Scrollbar invisible verticalement mais propre horizontalement */
+        ::-webkit-scrollbar { width: 8px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1E293B; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748B; }
+
+        .game-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .game-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); }
+    </style>
+</head>
+<body class="text-gray-200">
+
+    <div id="app" class="flex flex-col items-center min-h-screen"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = document.getElementById('app');
+
+            const statEmojis = { FOR: '💪', RES: '🛡️', CHA: '💬', SAV: '📚', DEX: '👋', PER: '👁️' };
+            const attrEmojis = { PC: '📦', PA: '🦶', PP: '💜', PT: '🌀', PE: '🧠', Bastos: '₿' };
+            const statusEffects = {
+                ok: { emoji: '😀', name: 'TOUT VA BIEN', description: "Aucun effet particulier." },
+                burn: { emoji: '🔥', name: 'BRÛLURES', description: "Perte de 1 PV par tour." },
+                bleed: { emoji: '🩸', name: 'SAIGNEMENTS', description: "Chaque action coûte 1 PV." },
+                stun: { emoji: '💫', name: 'ÉTOURDISSEMENT', description: "Inerte pour la durée de la crise." },
+                fracture: { emoji: '🦴', name: 'FRACTURE', description: "FOR, DEX, RES ou PER / 2 selon la localisation." },
+                hypoesthesia: { emoji: '🧿', name: 'HYPOESTHÉSIE', description: "PER / 2, perte possible d'autres sens." },
+                pasTop: { emoji: '💦', name: 'PAS TOP TOP', description: "Seuil de réussite de toutes les actions malussé de 1." },
+                snare: { emoji: '🔗', name: 'ENTRAVE', description: "Ne peut plus se déplacer." },
+                sick: { emoji: '💩', name: 'MALADE', description: "Test de RES avant chaque action." },
+                frenzy: { emoji: '💢', name: 'FRÉNÉSIE', description: "Ne différencie plus alliés et ennemis." },
+                pompette1: { emoji: '🍷', name: 'POMPETTE I', description: "Vous pouvez relancer un 🎲 échoué." },
+                pompette2: { emoji: '🍷', name: 'POMPETTE II', description: "Vous devez relancer un 🎲 réussi." },
+                pompette3: { emoji: '🍷', name: 'POMPETTE III', description: "Échecs critiques sur les 1 et 2." },
+            };
+            const raceAbilities = {
+                humain: { name: "Dividendes", description: "50₿ par 🎲 [CHA] toutes les 4h." },
+                troll: { name: "Résistance Naturelle", description: "Résistance x2 contre toxines, poisons, radiations." },
+                elfe: { name: "Organisé", description: "+2 PC📦 supplémentaires." },
+                demon: { name: "Savoir Ancestral", description: "-1 PT🌀 lors de l'utilisation de la magie." },
+                droide: { name: "Peau de Fer", description: "+1 PP💜 permanent." },
+                trifide: { name: "Photosynthèse", description: "Soin total 1 fois par partie." },
+            };
+            const statColors = {
+                FOR: 'bg-red-900/40 border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.15)]', 
+                RES: 'bg-orange-900/40 border-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.15)]', 
+                CHA: 'bg-yellow-900/40 border-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.15)]',
+                SAV: 'bg-blue-900/40 border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.15)]', 
+                DEX: 'bg-green-900/40 border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.15)]', 
+                PER: 'bg-pink-900/40 border-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.15)]',
+                default: 'bg-slate-800/80 border-slate-600'
+            };
+            const initialCharacterState = {
+                name: '', race: 'humain',
+                stats: { FOR: 0, RES: 0, CHA: 0, SAV: 0, DEX: 0, PER: 0 },
+                pv: 5, pt: 0, pe: 0, bastos: 1000, pp: 0,
+                inventory: [], cybernetics: [],
+                activeStatus: 'ok', fractureLocation: '', notes: [],
+                particularities: [], // Legacy
+                bankInventory: [],
+                bankBastos: 0,
+                vehicle: null,
+                photo: null,
+            };
+            const initialVehicleState = {
+                name: 'Nouveau Véhicule', pv: 0, pvMax: 0, size: 'F1',
+                engine: 0, weaponry: 0, seats: 1, inventory: [], photo: null
+            };
+
+            let state = {
+                character: null,
+                diceResult: null,
+                fractureModalOpen: false,
+                notesModalOpen: false,
+                genericRollModalOpen: false,
+                mapModalOpen: false,
+                vehicleModalOpen: false,
+                bankModalOpen: false,
+                bastosModalOpen: false,
+                moveItemModalOpen: false,
+                transferBastosModalOpen: false,
+                newItemModalOpen: false,
+                noteImagePreviewOpen: false,
+                currentPreviewImage: null,
+                moveItemSource: '',
+                moveItemId: null,
+                bastosInputValue: '',
+                transferBastosAmount: '',
+                genericRoll: { dice: 1, threshold: 8 },
+                newCharacter: JSON.parse(JSON.stringify(initialCharacterState)),
+            };
+
+            function setState(newState) {
+                Object.assign(state, newState);
+                render();
+            }
+
+            function calculateDerivedStats(char) {
+                if (!char) return {};
+                const ptReduction = Math.floor(char.pt / 10);
+                let reducedStats = Object.keys(char.stats).reduce((acc, stat) => {
+                    acc[stat] = Math.max(0, char.stats[stat] - ptReduction);
+                    return acc;
+                }, {});
+
+                if (char.activeStatus === 'hypoesthesia') { reducedStats.PER = Math.ceil(reducedStats.PER / 2); }
+                if (char.activeStatus === 'fracture' && char.fractureLocation) {
+                    const loc = char.fractureLocation;
+                    if (loc.includes('Jambe')) { reducedStats.FOR = Math.ceil(reducedStats.FOR / 2); }
+                    if (loc.includes('Bras')) { reducedStats.DEX = Math.ceil(reducedStats.DEX / 2); }
+                    if (loc === 'Torse') { reducedStats.RES = Math.ceil(reducedStats.RES / 2); }
+                    if (loc === 'Tête') { reducedStats.PER = Math.ceil(reducedStats.PER / 2); }
+                }
+
+                const inventoryBonus = char.inventory.reduce((acc, item) => {
+                    let w = Number(item.weight) || 0;
+                    if (item.itemType === 'backpack') {
+                        acc.pc += w; // Le sac à dos ajoute de la capacité
+                    } else if (['weapon', 'armor', 'misc'].includes(item.itemType)) {
+                        acc.pc -= w; // Les objets normaux réduisent la capacité
+                    } else {
+                        acc.pc += w; // Comportement Legacy pour les vieux objets
+                    }
+                    acc.pp += Number(item.armorPoints) || 0;
+                    return acc;
+                }, { pc: 0, pp: 0 });
+
+                const baseRacePP = char.race === 'droide' ? 1 : 0;
+                const raceBonusPC = char.race === 'elfe' ? 2 : 0;
+                const pc = (reducedStats.FOR + 3) + inventoryBonus.pc + raceBonusPC;
+                const pvMax = reducedStats.RES + 5;
+                const pa = Math.max(1, Math.ceil(reducedStats.DEX / 3));
+                const totalPp = baseRacePP + inventoryBonus.pp;
+                return { pc, pvMax, pa, totalPp, reducedStats };
+            }
+
+            window.handleEvent = function(event) {
+                const { action, payload } = event.currentTarget.dataset;
+                const value = event.currentTarget.value;
+
+                switch (action) {
+                    case 'updateNewChar':
+                        const [field, subfield] = payload.split('.');
+                        if (subfield) {
+                            state.newCharacter[field][subfield] = field === 'stats' ? parseInt(value) || 0 : value;
+                        } else {
+                            state.newCharacter[field] = value;
+                        }
+                        state.newCharacter.pv = (state.newCharacter.stats.RES || 0) + 5;
+                        setState({ newCharacter: state.newCharacter });
+                        break;
+                    case 'createCharacter':
+                        event.preventDefault();
+                        if (state.newCharacter.name.trim() === '') return;
+                        const { pvMax } = calculateDerivedStats(state.newCharacter);
+                        setState({ character: { ...state.newCharacter, id: Date.now(), pv: pvMax }, newCharacter: JSON.parse(JSON.stringify(initialCharacterState)) });
+                        break;
+                    case 'deleteCharacter':
+                        if (confirm("Fermer ce personnage ?")) setState({ character: null });
+                        break;
+                    case 'updateStat':
+                        state.character.stats[payload] = parseInt(value) || 0;
+                        const { pvMax: updatedPvMax } = calculateDerivedStats(state.character);
+                        if (state.character.pv > updatedPvMax) state.character.pv = updatedPvMax;
+                        setState({ character: state.character });
+                        break;
+                    case 'changePv':
+                        const { pvMax: currentPvMax } = calculateDerivedStats(state.character);
+                        const oldPv = state.character.pv;
+                        // On cap au maximum, et on ne descend pas en dessous de -1
+                        const newPv = Math.min(currentPvMax, Math.max(-1, oldPv + parseInt(payload)));
+                        
+                        if (newPv !== oldPv) {
+                            // Gestion automatique des états lors des dégâts
+                            if (newPv <= 4 && newPv > 0 && oldPv > 4) {
+                                state.character.activeStatus = 'pasTop';
+                            } else if (newPv <= 0 && oldPv > 0) {
+                                state.character.activeStatus = 'stun';
+                            }
+                            // Gestion automatique des états lors de la guérison
+                            else if (newPv > 0 && newPv <= 4 && oldPv <= 0 && state.character.activeStatus === 'stun') {
+                                state.character.activeStatus = 'pasTop';
+                            } else if (newPv >= 5 && oldPv < 5 && ['pasTop', 'stun'].includes(state.character.activeStatus)) {
+                                state.character.activeStatus = 'ok';
+                            }
+                        }
+                        
+                        state.character.pv = newPv;
+                        setState({ character: state.character });
+                        break;
+                    case 'updateAttribute':
+                        let updatedValue = isNaN(parseInt(value)) || value === '' ? value : parseInt(value);
+                        state.character[payload] = updatedValue;
+                        if (payload === 'activeStatus' && value === 'fracture') setState({ fractureModalOpen: true });
+                        setState({ character: state.character });
+                        break;
+                    case 'selectFractureLocation':
+                        state.character.fractureLocation = payload;
+                        setState({ character: state.character, fractureModalOpen: false });
+                        break;
+                    case 'statRoll':
+                        handleStatRoll(payload);
+                        break;
+                        
+                    // GESTION BASTOS (Monnaie)
+                    case 'openBastosModal':
+                        setState({ bastosModalOpen: true, bastosInputValue: '' });
+                        break;
+                    case 'updateBastosInput':
+                        setState({ bastosInputValue: value });
+                        break;
+                    case 'modifyBastos':
+                        const amount = parseInt(state.bastosInputValue) || 0;
+                        const isAdd = payload === '+';
+                        state.character.bastos = Math.max(0, state.character.bastos + (isAdd ? amount : -amount));
+                        setState({ character: state.character, bastosModalOpen: false });
+                        break;
+
+                    case 'depositToBank':
+                        const depositAmount = parseInt(state.bastosInputValue) || 0;
+                        if (depositAmount > 0) {
+                            if (state.character.bastos >= depositAmount) {
+                                state.character.bastos -= depositAmount;
+                                state.character.bankBastos = (parseInt(state.character.bankBastos) || 0) + depositAmount;
+                                setState({ character: state.character, bastosModalOpen: false });
+                            } else {
+                                alert("Vous n'avez pas assez de Bastos dans votre bourse pour effectuer ce dépôt.");
+                            }
+                        } else {
+                            setState({ bastosModalOpen: false });
+                        }
+                        break;
+
+                    // GESTION BASTOS DU COFFRE
+                    case 'openTransferBastosModal':
+                        if ((parseInt(state.character.bankBastos) || 0) > 0) {
+                            setState({ transferBastosModalOpen: true, transferBastosAmount: '' });
+                        } else {
+                            alert("Le coffre est vide. Vous n'avez aucun Bastos à retirer.");
+                        }
+                        break;
+                    case 'updateTransferBastosAmount':
+                        setState({ transferBastosAmount: value });
+                        break;
+                    case 'confirmTransferBastos':
+                        const tAmount = parseInt(state.transferBastosAmount) || 0;
+                        const currentBank = parseInt(state.character.bankBastos) || 0;
+                        if (tAmount > 0 && tAmount <= currentBank) {
+                            state.character.bastos = (parseInt(state.character.bastos) || 0) + tAmount;
+                            state.character.bankBastos = currentBank - tAmount;
+                            setState({ character: state.character, transferBastosModalOpen: false });
+                        } else {
+                            alert("Montant invalide ou supérieur au solde du coffre.");
+                        }
+                        break;
+
+                    // GESTION GENERIQUE OBJETS (Inventaire, Banque, Véhicule)
+                    case 'promptMoveItem':
+                        const [src, id] = payload.split('.');
+                        setState({ 
+                            moveItemModalOpen: true, 
+                            moveItemSource: src, 
+                            moveItemId: parseInt(id) 
+                        });
+                        break;
+                    case 'confirmMoveItem':
+                        const tgtList = payload; // 'inventory', 'bankInventory', 'vehicle'
+                        const srcList = state.moveItemSource;
+                        const mItemId = state.moveItemId;
+                        
+                        const sourceArray = srcList === 'vehicle' ? state.character.vehicle.inventory : state.character[srcList];
+                        const targetArray = tgtList === 'vehicle' ? state.character.vehicle.inventory : state.character[tgtList];
+                        
+                        const itemIdx = sourceArray.findIndex(i => i.id === mItemId);
+                        if (itemIdx !== -1) {
+                            const itemToMove = sourceArray.splice(itemIdx, 1)[0];
+                            
+                            // Déséquiper automatiquement l'objet s'il quitte l'inventaire principal
+                            if (tgtList !== 'inventory') {
+                                itemToMove.equipped = false;
+                            }
+                            
+                            targetArray.unshift(itemToMove);
+                            
+                            // Tri dynamique de l'inventaire
+                            if (tgtList === 'inventory') {
+                                targetArray.sort((a, b) => (b.equipped === true ? 1 : 0) - (a.equipped === true ? 1 : 0) || b.id - a.id);
+                            }
+                            
+                            setState({ character: state.character, moveItemModalOpen: false });
+                        }
+                        break;
+                    case 'toggleEquip':
+                        const eqItem = state.character.inventory.find(i => i.id === parseInt(payload));
+                        if (eqItem) {
+                            if (eqItem.equipped) {
+                                eqItem.equipped = false;
+                            } else {
+                                const currentHands = state.character.inventory.reduce((sum, i) => sum + (i.equipped ? (i.hands || 1) : 0), 0);
+                                if (currentHands + (eqItem.hands || 1) > 2) {
+                                    alert("Vous n'avez que 2 mains ! Déséquipez d'abord une autre arme pour libérer de la place.");
+                                    return;
+                                }
+                                eqItem.equipped = true;
+                            }
+                            // Tri dynamique de l'inventaire
+                            state.character.inventory.sort((a, b) => (b.equipped === true ? 1 : 0) - (a.equipped === true ? 1 : 0) || b.id - a.id);
+                            setState({ character: state.character });
+                        }
+                        break;
+                    case 'openAddItemModal':
+                        setState({ newItemModalOpen: true });
+                        break;
+                    case 'createItem':
+                        const [itemType, handsStr] = payload.split('.');
+                        const hands = handsStr ? parseInt(handsStr) : null;
+                        state.character.inventory.unshift({ 
+                            id: Date.now(), 
+                            name: 'Nouvel objet', 
+                            itemType: itemType, 
+                            hands: hands,
+                            equipped: false,
+                            stat: '', diceBonus: 0, successThreshold: 8, 
+                            weight: 0, armorPoints: 0, bastosCost: '-', 
+                            specialAbility: '', 
+                            isExpanded: true 
+                        });
+                        // Tri dynamique
+                        state.character.inventory.sort((a, b) => (b.equipped === true ? 1 : 0) - (a.equipped === true ? 1 : 0) || b.id - a.id);
+                        setState({ character: state.character, newItemModalOpen: false });
+                        break;
+                    case 'addVehicleItem':
+                        state.character.vehicle.inventory.unshift({ 
+                            id: Date.now(), name: 'Nouvel objet', itemType: 'misc', 
+                            stat: '', diceBonus: 0, successThreshold: 8, 
+                            weight: 0, armorPoints: 0, bastosCost: '-', 
+                            specialAbility: '', isExpanded: true 
+                        });
+                        setState({ character: state.character });
+                        break;
+                    case 'updateItem':
+                        const parts = payload.split('.');
+                        const colName = parts.length === 3 ? parts[0] : 'inventory';
+                        const iId = parts.length === 3 ? parts[1] : parts[0];
+                        const fUpdate = parts.length === 3 ? parts[2] : parts[1];
+                        
+                        const list = colName === 'vehicle' ? state.character.vehicle.inventory : state.character[colName];
+                        const item = list.find(i => i.id === parseInt(iId));
+                        if (item) {
+                            const numericFields = ['diceBonus', 'successThreshold', 'weight', 'armorPoints'];
+                            item[fUpdate] = numericFields.includes(fUpdate) ? (parseInt(value) || 0) : value;
+                        }
+                        setState({ character: state.character });
+                        break;
+                    case 'deleteItem':
+                        let listToDeleteFrom = 'inventory';
+                        let idToDelete = payload;
+                        if (payload.includes('.')) {
+                            [listToDeleteFrom, idToDelete] = payload.split('.');
+                        }
+                        if (listToDeleteFrom === 'vehicle') {
+                            state.character.vehicle.inventory = state.character.vehicle.inventory.filter(i => i.id !== parseInt(idToDelete));
+                        } else {
+                            state.character[listToDeleteFrom] = state.character[listToDeleteFrom].filter(i => i.id !== parseInt(idToDelete));
+                        }
+                        setState({ character: state.character });
+                        break;
+                    case 'attack':
+                        const atkList = payload.includes('.') ? payload.split('.')[0] : 'inventory';
+                        const atkId = payload.includes('.') ? payload.split('.')[1] : payload;
+                        handleAttack(state.character[atkList].find(i => i.id === parseInt(atkId)));
+                        break;
+
+                    // EXPORT / IMPORT OBJETS SEULS
+                    case 'exportItem':
+                        const [expList, expItemId] = payload.split('.');
+                        const listToExportFrom = expList === 'vehicle' ? state.character.vehicle.inventory : state.character[expList];
+                        const itemToExport = listToExportFrom.find(i => i.id === parseInt(expItemId));
+                        if (!itemToExport) return;
+                        
+                        const exportData = { type: 'aldebaran_item', data: itemToExport };
+                        const itemBlob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+                        const itemA = document.createElement('a');
+                        itemA.href = URL.createObjectURL(itemBlob);
+                        itemA.download = `${itemToExport.name.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'objet'}_item.json`;
+                        itemA.click();
+                        URL.revokeObjectURL(itemA.href);
+                        break;
+                        
+                    case 'importItem':
+                        const itemFile = event.target.files[0];
+                        if (!itemFile) return;
+                        
+                        const itemReader = new FileReader();
+                        itemReader.onload = (e) => {
+                            try {
+                                const importedData = JSON.parse(e.target.result);
+                                let itemToAdd = null;
+                                
+                                if (importedData.type === 'aldebaran_item' && importedData.data) {
+                                    itemToAdd = importedData.data;
+                                } else if (importedData.name !== undefined && importedData.weight !== undefined) {
+                                    itemToAdd = importedData;
+                                }
+
+                                if (itemToAdd) {
+                                    itemToAdd.id = Date.now();
+                                    state.character.inventory.unshift(itemToAdd);
+                                    // Tri dynamique après import
+                                    state.character.inventory.sort((a, b) => (b.equipped === true ? 1 : 0) - (a.equipped === true ? 1 : 0) || b.id - a.id);
+                                    setState({ character: state.character });
+                                } else {
+                                    alert("Le fichier ne correspond pas à un objet valide.");
+                                }
+                            } catch (err) {
+                                console.error(err);
+                                alert("Erreur lors de la lecture du fichier JSON.");
+                            }
+                            event.target.value = ''; // Reset
+                        };
+                        itemReader.readAsText(itemFile);
+                        break;
+
+                    // CYBERNETIQUE & MUTATIONS & PARTICULARITES
+                    case 'addCybernetic':
+                        state.character.cybernetics.unshift({ id: Date.now(), name: 'Nouvelle comp.', bodyPart: 'Tête', type: 'cybernetic', ability: '', stat: '', diceBonus: 0, successThreshold: 8, isExpanded: true });
+                        setState({ character: state.character });
+                        break;
+                    case 'deleteCybernetic':
+                        state.character.cybernetics = state.character.cybernetics.filter(c => c.id !== parseInt(payload));
+                        setState({ character: state.character });
+                        break;
+                    case 'updateCybernetic':
+                        const [cId, cField] = payload.split('.');
+                        const cyber = state.character.cybernetics.find(c => c.id === parseInt(cId));
+                        if (cyber) {
+                            const numFields = ['diceBonus', 'successThreshold'];
+                            cyber[cField] = numFields.includes(cField) ? (parseInt(value) || 0) : value;
+                        }
+                        setState({ character: state.character });
+                        break;
+                        
+                    // TOGGLE PANNEAUX AMOVIBLES
+                    case 'toggleExpand':
+                        const [collName, expId] = payload.split('.');
+                        const listToExpand = collName === 'vehicle' ? state.character.vehicle.inventory : state.character[collName];
+                        const targetItem = listToExpand.find(i => i.id === parseInt(expId));
+                        if (targetItem) {
+                            targetItem.isExpanded = targetItem.isExpanded === false ? true : false;
+                            setState({ character: state.character });
+                        }
+                        break;
+
+                    // VEHICULE & UI
+                    case 'toggleFullscreen':
+                        if (!document.fullscreenElement) {
+                            document.documentElement.requestFullscreen();
+                        } else {
+                            document.exitFullscreen();
+                        }
+                        break;
+                    case 'openBankModal': setState({ bankModalOpen: true }); break;
+                    case 'openVehicleModal':
+                        if (!state.character.vehicle) state.character.vehicle = JSON.parse(JSON.stringify(initialVehicleState));
+                        setState({ vehicleModalOpen: true });
+                        break;
+                    case 'openMapModal': setState({ mapModalOpen: true }); break;
+                    case 'openGenericRollModal': setState({ genericRollModalOpen: true }); break;
+                    case 'updateGenericRoll':
+                        state.genericRoll[payload] = parseInt(value) || 1;
+                        setState({ genericRoll: state.genericRoll });
+                        break;
+                    case 'performGenericRoll':
+                        event.preventDefault(); // Empêche le rechargement de la page
+                        const genDiceCount = state.genericRoll.dice || 1;
+                        const genThreshold = state.genericRoll.threshold || 8;
+                        const genRolls = Array.from({ length: genDiceCount }, () => Math.floor(Math.random() * 10) + 1);
+                        setState({
+                            diceResult: {
+                                rolls: genRolls,
+                                successes: genRolls.filter(r => r >= genThreshold).length,
+                                threshold: genThreshold,
+                                statName: 'Jet Libre'
+                            },
+                            genericRollModalOpen: false // Ferme la fenêtre de configuration pour afficher le résultat
+                        });
+                        break;
+                    case 'openNotes': 
+                        if (typeof state.character.notes === 'string') {
+                            const oldNotes = state.character.notes;
+                            state.character.notes = oldNotes.trim() ? [{ id: Date.now(), title: 'Notes Générales', content: oldNotes, isExpanded: true }] : [];
+                        }
+                        setState({ notesModalOpen: true }); 
+                        break;
+                    case 'closeModal':
+                        if (payload) {
+                            setState({ [payload]: (payload === 'diceResult' ? null : false) });
+                        } else {
+                            setState({ diceResult: null, fractureModalOpen: false, notesModalOpen: false, genericRollModalOpen: false, mapModalOpen: false, vehicleModalOpen: false, bankModalOpen: false, bastosModalOpen: false, moveItemModalOpen: false, transferBastosModalOpen: false, newItemModalOpen: false, noteImagePreviewOpen: false }); 
+                        }
+                        break;
+                    case 'addNote':
+                        state.character.notes.unshift({ id: Date.now(), title: 'Nouveau paragraphe', content: '', image: null, isExpanded: true });
+                        setState({ character: state.character });
+                        break;
+                    case 'deleteNote':
+                        state.character.notes = state.character.notes.filter(n => n.id !== parseInt(payload));
+                        setState({ character: state.character });
+                        break;
+                    case 'updateNote':
+                        const [nId, nField] = payload.split('.');
+                        const note = state.character.notes.find(n => n.id === parseInt(nId));
+                        if (note) note[nField] = value;
+                        setState({ character: state.character });
+                        break;
+                    case 'toggleNote':
+                        const tNote = state.character.notes.find(n => n.id === parseInt(payload));
+                        if (tNote) {
+                            tNote.isExpanded = tNote.isExpanded === false ? true : false;
+                            setState({ character: state.character });
+                        }
+                        break;
+                        
+                    // GESTION DES IMAGES DANS LE JOURNAL
+                    case 'triggerNoteImageUpload':
+                        document.getElementById(`noteImageInput_${payload}`).click();
+                        break;
+                    case 'uploadNoteImage':
+                        const targetNoteId = parseInt(payload);
+                        const noteFile = event.target.files[0];
+                        if (!noteFile) return;
+                        const noteReader = new FileReader();
+                        noteReader.onload = (e) => {
+                            const targetNote = state.character.notes.find(n => n.id === targetNoteId);
+                            if (targetNote) {
+                                targetNote.image = e.target.result;
+                                setState({ character: state.character });
+                            }
+                        };
+                        noteReader.readAsDataURL(noteFile);
+                        event.target.value = ''; // Reset de l'input pour pouvoir ré-importer la même image si besoin
+                        break;
+                    case 'removeNoteImage':
+                        const removeNoteId = parseInt(payload);
+                        const removeNote = state.character.notes.find(n => n.id === removeNoteId);
+                        if (removeNote) {
+                            removeNote.image = null;
+                            setState({ character: state.character });
+                        }
+                        break;
+                    case 'openNoteImagePreview':
+                        const previewNote = state.character.notes.find(n => n.id === parseInt(payload));
+                        if (previewNote && previewNote.image) {
+                            setState({ noteImagePreviewOpen: true, currentPreviewImage: previewNote.image });
+                        }
+                        break;
+
+                    case 'downloadJsonSave':
+                        if (!state.character) return;
+                        const blob = new Blob([JSON.stringify({ character: state.character }, null, 2)], { type: "application/json" });
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = `${state.character.name}_save.json`;
+                        a.click();
+                        break;
+                    case 'loadFromJsonFile':
+                        const file = event.target.files[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const data = JSON.parse(e.target.result);
+                            let loadedChar = data.character || data;
+                            if (typeof loadedChar.notes === 'string') {
+                                const oldNotes = loadedChar.notes;
+                                loadedChar.notes = oldNotes.trim() ? [{ id: Date.now(), title: 'Notes Générales', content: oldNotes, isExpanded: true }] : [];
+                            }
+                            setState({ character: loadedChar });
+                        };
+                        reader.readAsText(file);
+                        break;
+                    case 'uploadPhoto':
+                        const photoFile = event.target.files[0];
+                        if (!photoFile) return;
+                        const photoReader = new FileReader();
+                        photoReader.onload = (e) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                const ctx = canvas.getContext('2d');
+                                canvas.width = 300; canvas.height = 300;
+                                ctx.drawImage(img, 0, 0, 300, 300);
+                                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                                
+                                if (payload === 'newCharacter') state.newCharacter.photo = dataUrl;
+                                else if (payload === 'vehicle' && state.character.vehicle) state.character.vehicle.photo = dataUrl;
+                                else state.character.photo = dataUrl;
+                                
+                                setState({});
+                            };
+                            img.src = e.target.result;
+                        };
+                        photoReader.readAsDataURL(photoFile);
+                        break;
+                    case 'updateVehicle':
+                        const vField = payload;
+                        const isNumeric = !isNaN(parseInt(value));
+                        state.character.vehicle[vField] = (isNumeric && vField !== 'name') ? parseInt(value) : value;
+                        if (vField === 'pvMax' && state.character.vehicle.pv > state.character.vehicle.pvMax) {
+                            state.character.vehicle.pv = state.character.vehicle.pvMax;
+                        }
+                        setState({ character: state.character });
+                        break;
+                    case 'changeVehiclePv':
+                        const v = state.character.vehicle;
+                        v.pv = Math.min(v.pvMax, Math.max(0, v.pv + parseInt(payload)));
+                        setState({ character: state.character });
+                        break;
+                    case 'useEngine':
+                    case 'useWeaponry':
+                        handleVehicleRoll(action);
+                        break;
+                }
+            };
+
+            function handleStatRoll(statName) {
+                const { reducedStats } = calculateDerivedStats(state.character);
+                const diceCount = reducedStats[statName] || 0;
+                if (diceCount <= 0) { alert("Statistique trop basse pour lancer les dés !"); return; }
+                let threshold = 8;
+                if (state.character.activeStatus === 'pasTop') threshold += 1;
+                const rolls = Array.from({ length: diceCount }, () => Math.floor(Math.random() * 10) + 1);
+                setState({ diceResult: { rolls, successes: rolls.filter(r => r >= threshold).length, threshold, statName } });
+            }
+
+            function handleAttack(item) {
+                if (!item) return;
+                const { reducedStats } = calculateDerivedStats(state.character);
+                
+                if (!isNaN(item.bastosCost) && item.bastosCost !== '' && item.bastosCost !== '-') {
+                    const cost = parseInt(item.bastosCost);
+                    if (state.character.bastos < cost) { 
+                        alert("Pas assez de Bastos pour utiliser cet objet !"); 
+                        return; 
+                    }
+                    state.character.bastos -= cost;
+                }
+
+                const diceCount = (reducedStats[item.stat] || 0) + (item.diceBonus || 0);
+                if (diceCount <= 0) { alert("Nombre de dés insuffisant !"); return; }
+                let threshold = item.successThreshold;
+                if (state.character.activeStatus === 'pasTop') threshold += 1;
+                const rolls = Array.from({ length: diceCount }, () => Math.floor(Math.random() * 10) + 1);
+                setState({ diceResult: { rolls, successes: rolls.filter(r => r >= threshold).length, threshold, statName: item.name } });
+            }
+            
+            function handleVehicleRoll(type) {
+                const { reducedStats } = calculateDerivedStats(state.character);
+                const vehicle = state.character.vehicle;
+                let diceCount = 0;
+                let statName = '';
+                let rollName = '';
+
+                if (type === 'useEngine') {
+                    diceCount = (reducedStats.DEX || 0) + (vehicle.engine || 0);
+                    statName = 'DEX'; rollName = 'Moteur';
+                } else if (type === 'useWeaponry') {
+                    diceCount = (reducedStats.PER || 0) + (vehicle.weaponry || 0);
+                    statName = 'PER'; rollName = 'Armement';
+                }
+
+                if (diceCount <= 0) { alert(`Valeur trop basse !`); return; }
+                let threshold = 8;
+                if (state.character.activeStatus === 'pasTop') threshold += 1;
+
+                const rolls = Array.from({ length: diceCount }, () => Math.floor(Math.random() * 10) + 1);
+                setState({ diceResult: { rolls, successes: rolls.filter(r => r >= threshold).length, threshold, statName: `Jet de ${rollName}` } });
+            }
+
+            function render() {
+                const { character, newCharacter, diceResult, fractureModalOpen, notesModalOpen, genericRollModalOpen, mapModalOpen, vehicleModalOpen, bankModalOpen, genericRoll, bastosModalOpen } = state;
+                const scrollY = window.scrollY;
+                
+                if (character && character.particularities && character.particularities.length > 0 && typeof character.particularities[0] === 'string') {
+                    character.particularities.forEach((p, idx) => {
+                        character.cybernetics.push({ id: Date.now() + idx, name: `Particularité ${idx+1}`, bodyPart: 'Général', type: 'particularity', ability: p, stat: '', diceBonus: 0, successThreshold: 8, isExpanded: false });
+                    });
+                    character.particularities = [];
+                }
+
+                const derived = calculateDerivedStats(character);
+                const malusStats = {};
+                if (character?.activeStatus === 'hypoesthesia') malusStats.PER = true;
+                if (character?.activeStatus === 'fracture' && character.fractureLocation) {
+                    const loc = character.fractureLocation;
+                    if (loc.includes('Jambe')) malusStats.FOR = true;
+                    if (loc.includes('Bras')) malusStats.DEX = true;
+                    if (loc === 'Torse') malusStats.RES = true;
+                    if (loc === 'Tête') malusStats.PER = true;
+                }
+
+                const isDead = character && character.pv <= -1;
+                
+                const newCharDerived = calculateDerivedStats(newCharacter);
+
+                app.innerHTML = `
+                    ${renderModals()}
+                    <div class="w-full min-h-screen p-4 sm:p-6 md:p-8 max-w-7xl mx-auto ${isDead ? 'grayscale opacity-90 transition-all duration-700' : 'transition-all duration-700'}">
+                        
+                        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                            <h1 class="font-aldebaran text-center md:text-left drop-shadow-xl">
+                                <span class="text-silver">ALDEBARAN</span><span class="text-play-blue">PLAY</span>
+                            </h1>
+                            <div class="flex items-center gap-3">
+                                ${character ? `
+                                <button data-action="openBankModal" class="bg-red-600 hover:bg-red-500 shadow-[0_4px_0_#991b1b] active:shadow-[0_0px_0_#991b1b] active:translate-y-1 text-white p-3 rounded-xl text-2xl transition-all" title="Banque">💳</button>
+                                <button data-action="openVehicleModal" class="bg-yellow-600 hover:bg-yellow-500 shadow-[0_4px_0_#ca8a04] active:shadow-[0_0px_0_#ca8a04] active:translate-y-1 text-white p-3 rounded-xl text-2xl transition-all" title="Véhicule">🚙</button>
+                                <button data-action="openMapModal" class="bg-blue-600 hover:bg-blue-500 shadow-[0_4px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8] active:translate-y-1 text-white p-3 rounded-xl text-2xl transition-all" title="Carte">🌏</button>
+                                <button data-action="openGenericRollModal" class="bg-purple-600 hover:bg-purple-500 shadow-[0_4px_0_#6b21a8] active:shadow-[0_0px_0_#6b21a8] active:translate-y-1 text-white p-3 rounded-xl text-2xl transition-all" title="Dés">🎲</button>
+                                <button data-action="openNotes" class="bg-green-600 hover:bg-green-500 shadow-[0_4px_0_#166534] active:shadow-[0_0px_0_#166534] active:translate-y-1 text-white p-3 rounded-xl text-2xl transition-all" title="Notes">📋</button>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        ${!character ? renderCreationScreen(newCharacter, newCharDerived) : renderCharacterSheet(character, derived, malusStats)}
+
+                        <div class="mt-12 flex flex-wrap justify-center gap-6 border-t border-slate-700 pt-8 pb-12">
+                            <button data-action="downloadJsonSave" class="bg-blue-600 hover:bg-blue-500 shadow-[0_4px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8] active:translate-y-1 text-white font-bold py-3 px-8 rounded-xl flex items-center gap-3 transition-all text-lg">
+                                <span class="text-2xl">💾</span> Sauvegarder
+                            </button>
+                            <button onclick="document.getElementById('jsonFileInput').click()" class="bg-purple-600 hover:bg-purple-500 shadow-[0_4px_0_#6b21a8] active:shadow-[0_0px_0_#6b21a8] active:translate-y-1 text-white font-bold py-3 px-8 rounded-xl flex items-center gap-3 transition-all text-lg">
+                                <span class="text-2xl">📂</span> Charger
+                            </button>
+                            <button data-action="toggleFullscreen" class="bg-slate-700 hover:bg-slate-600 shadow-[0_4px_0_#334155] active:shadow-[0_0px_0_#334155] active:translate-y-1 text-white font-bold py-3 px-8 rounded-xl flex items-center gap-3 transition-all text-lg">
+                                <span><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></span> Plein écran
+                            </button>
+                            <input type="file" id="jsonFileInput" accept=".json" data-action="loadFromJsonFile" class="hidden"/>
+                        </div>
+                    </div>
+                `;
+
+                attachEventListeners();
+                window.scrollTo(0, scrollY);
+            }
+
+            function renderCreationScreen(nc, derived) {
+                return `<div class="p-8 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 max-w-4xl mx-auto game-card">
+                    <h3 class="text-3xl font-bold mb-8 text-play-blue text-center uppercase tracking-wide">Création de Personnage</h3>
+                    <form data-action="createCharacter" class="space-y-8">
+                        <div class="flex flex-col md:flex-row gap-8 items-center md:items-start">
+                            <div class="w-32 h-32 rounded-2xl border-4 border-slate-600 overflow-hidden cursor-pointer hover:border-play-blue transition-colors flex-shrink-0 group relative bg-slate-900" onclick="document.getElementById('newPhotoInput').click()">
+                                ${nc.photo ? `<img src="${nc.photo}" class="w-full h-full object-cover">` : `<div class="flex flex-col items-center justify-center h-full text-slate-500"><span class="text-4xl mb-1">👤</span><span class="text-xs font-bold">+ PHOTO</span></div>`}
+                                <input type="file" id="newPhotoInput" class="hidden" accept="image/*" data-action="uploadPhoto" data-payload="newCharacter">
+                            </div>
+                            <div class="flex-grow w-full space-y-4">
+                                <div>
+                                    <label class="block text-slate-400 font-bold mb-2 uppercase text-sm">Nom du Personnage</label>
+                                    <input type="text" value="${nc.name}" data-action="updateNewChar" data-payload="name" placeholder="Ex: Radek" class="w-full bg-slate-900 p-4 rounded-xl border border-slate-600 text-lg font-bold focus:border-play-blue focus:ring-1 focus:ring-play-blue outline-none" required>
+                                </div>
+                                <div>
+                                    <label class="block text-slate-400 font-bold mb-2 uppercase text-sm">Race</label>
+                                    <select data-action="updateNewChar" data-payload="race" class="w-full bg-slate-900 p-4 rounded-xl border border-slate-600 text-lg font-bold uppercase focus:border-play-blue focus:ring-1 focus:ring-play-blue outline-none">
+                                        ${Object.keys(raceAbilities).map(r => `<option value="${r}" ${r === nc.race ? 'selected' : ''}>${r}</option>`).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="text-xl font-bold text-silver mb-4 uppercase text-center md:text-left">Statistiques Principales</h4>
+                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                                ${Object.keys(nc.stats).map(stat => `
+                                    <div class="${statColors[stat] || 'bg-slate-900 border-slate-700'} border-2 p-4 rounded-xl text-center flex flex-col items-center">
+                                        <div class="text-4xl mb-2">${statEmojis[stat]}</div>
+                                        <label class="font-bold text-white uppercase text-xs tracking-wider mb-2">${stat}</label>
+                                        <input type="number" value="${nc.stats[stat]}" data-action="updateNewChar" data-payload="stats.${stat}" class="w-16 h-12 bg-slate-900/80 rounded-lg text-center font-bold text-xl border border-slate-600 focus:border-white outline-none text-white" min="0"/>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-xl font-bold text-silver mb-4 uppercase text-center md:text-left">Attributs</h4>
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+                                <div class="bg-slate-900 p-3 rounded-xl border border-slate-700"><div class="text-2xl mb-1">❤️</div><label class="block text-xs font-bold text-slate-400 mb-1">PV MAX</label><span class="block text-xl font-bold text-white">${nc.pv}</span></div>
+                                <div class="bg-slate-900 p-3 rounded-xl border border-slate-700"><div class="text-2xl mb-1">💜</div><label class="block text-xs font-bold text-slate-400 mb-1">PP</label><span class="block text-xl font-bold text-white">${derived.totalPp || 0}</span></div>
+                                <div class="bg-slate-900 p-3 rounded-xl border border-slate-700"><div class="text-2xl mb-1">🌀</div><label class="block text-xs font-bold text-slate-400 mb-1">PT</label><input type="number" value="${nc.pt}" data-action="updateNewChar" data-payload="pt" class="w-full bg-slate-800 text-center rounded font-bold p-1" min="0"/></div>
+                                <div class="bg-slate-900 p-3 rounded-xl border border-slate-700"><div class="text-2xl mb-1">🧠</div><label class="block text-xs font-bold text-slate-400 mb-1">PE</label><input type="number" value="${nc.pe}" data-action="updateNewChar" data-payload="pe" class="w-full bg-slate-800 text-center rounded font-bold p-1" min="0"/></div>
+                                <div class="bg-slate-900 p-3 rounded-xl border border-slate-700"><div class="text-2xl mb-1">₿</div><label class="block text-xs font-bold text-slate-400 mb-1">BASTOS</label><input type="number" value="${nc.bastos}" data-action="updateNewChar" data-payload="bastos" class="w-full bg-slate-800 text-center rounded font-bold p-1" min="0"/></div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-green-600 hover:bg-green-500 shadow-[0_4px_0_#166534] active:shadow-[0_0px_0_#166534] active:translate-y-1 text-white p-4 rounded-xl font-bold text-xl uppercase tracking-widest transition-all mt-4">
+                            Lancer la Partie !
+                        </button>
+                    </form>
+                </div>`;
+            }
+
+            function renderCharacterSheet(char, derived, malusStats) {
+                const isDead = char.pv <= -1;
+                const pvPercent = derived.pvMax > 0 ? (Math.max(0, char.pv) / derived.pvMax) * 100 : 0;
+                const hpBarColor = char.pv <= 4 ? 'bg-red-500 animate-pulse-pv' : 'bg-gradient-to-r from-green-500 to-emerald-400';
+                
+                let activeEmoji = '';
+                if (isDead) {
+                    activeEmoji = '💀';
+                } else if (char.activeStatus && char.activeStatus !== 'ok') {
+                    activeEmoji = statusEffects[char.activeStatus]?.emoji || '';
+                }
+
+                return `<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <!-- Colonne Gauche -->
+                    <div class="lg:col-span-4 space-y-6">
+                        <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl game-card relative overflow-hidden">
+                            
+                            <div class="flex flex-col items-center gap-2 mb-4 mt-2">
+                                <div class="w-40 h-40 relative flex-shrink-0 bg-slate-900 rounded-full overflow-hidden border-4 ${isDead ? 'border-slate-600 shadow-none' : 'border-play-blue shadow-[0_0_15px_rgba(99,102,241,0.5)]'} cursor-pointer group" onclick="document.getElementById('editPhotoInput').click()">
+                                    
+                                    <!-- Couche 0 : Image de fond -->
+                                    ${char.photo ? `<img src="${char.photo}" class="w-full h-full object-cover absolute inset-0 z-0">` 
+                                    : `<div class="w-full h-full absolute inset-0 z-0 flex items-center justify-center text-6xl text-slate-600 pb-4">👤</div>`}
+                                    
+                                    <!-- Couche 1 : Effets d'état superposés sans flou -->
+                                    ${activeEmoji ? `<div class="absolute inset-0 bg-black/60 z-10 flex items-center justify-center text-7xl pb-4 animate-pulse opacity-90">${activeEmoji}</div>` : ''}
+
+                                    <!-- Couche 2 : Effet au survol pour modifier la photo -->
+                                    <div class="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-30">
+                                        <span class="text-xs font-bold text-white uppercase tracking-widest">Modifier</span>
+                                    </div>
+                                    <input type="file" id="editPhotoInput" class="hidden" accept="image/*" data-action="uploadPhoto" data-payload="character">
+                                </div>
+                                <div class="text-center mt-2">
+                                    <h3 class="text-2xl font-bold text-white tracking-wide drop-shadow-md">${char.name}</h3>
+                                    <span class="inline-block mt-1 px-3 py-1 bg-slate-900 rounded-lg text-xs font-bold text-play-blue uppercase border border-play-blue/30 shadow-sm">${char.race}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
+                                <div class="flex justify-between items-end mb-2">
+                                    <span class="text-xl">❤️ <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Points de Vie</span></span>
+                                    <span class="text-lg font-bold ${isDead ? 'text-red-600' : char.pv === 0 ? 'text-red-400' : 'text-white'}">${char.pv} <span class="text-xs text-slate-500">/ ${derived.pvMax}</span></span>
+                                </div>
+                                <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700">
+                                    <div class="h-full transition-all duration-500 rounded-full ${hpBarColor}" style="width: ${pvPercent}%"></div>
+                                </div>
+                                <div class="flex gap-2 mt-3">
+                                    <button data-action="changePv" data-payload="-1" class="flex-1 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/50 hover:border-red-600 rounded-lg py-1 font-bold text-lg transition-colors">-</button>
+                                    <button data-action="changePv" data-payload="1" class="flex-1 bg-green-600/20 hover:bg-green-600 text-green-500 hover:text-white border border-green-600/50 hover:border-green-600 rounded-lg py-1 font-bold text-lg transition-colors">+</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl game-card">
+                            <h4 class="text-lg font-bold text-silver mb-4 uppercase text-center tracking-wider">Statistiques</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                ${Object.entries(char.stats).map(([s, v]) => `
+                                    <div class="relative ${statColors[s] || 'bg-slate-900 border-slate-700'} border-2 p-3 rounded-xl flex flex-col items-center justify-between group">
+                                        ${Math.floor(char.pt / 10) > 0 ? `<div class="absolute -top-2 -left-2 bg-purple-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg">-${Math.floor(char.pt / 10)}</div>` : ''}
+                                        ${malusStats[s] ? `<div class="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg">/2</div>` : ''}
+                                        
+                                        <div class="text-3xl mb-1 group-hover:scale-110 transition-transform">${statEmojis[s]}</div>
+                                        <label class="text-[11px] font-bold text-white uppercase tracking-widest mb-2">${s}</label>
+                                        
+                                        <div class="flex w-full gap-1">
+                                            <input type="number" value="${v}" data-action="updateStat" data-payload="${s}" class="w-1/2 bg-slate-900/80 text-center font-bold rounded-lg border border-slate-600 focus:border-white outline-none py-1 text-white">
+                                            <button data-action="statRoll" data-payload="${s}" class="w-1/2 bg-indigo-600 hover:bg-indigo-500 shadow-[0_3px_0_#4338ca] active:shadow-[0_0px_0_#4338ca] active:translate-y-[3px] text-white rounded-lg text-sm font-bold transition-all">🎲</button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            
+                            <div class="mt-4 bg-slate-900 py-2 px-4 rounded-xl border border-slate-700 flex flex-row items-center justify-center gap-3 shadow-inner max-w-[200px] mx-auto">
+                                <div class="text-lg font-black italic tracking-widest flex gap-[1px]">
+                                    <span class="text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]">P</span>
+                                    <span class="text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.8)]">O</span>
+                                    <span class="text-yellow-500 drop-shadow-[0_0_5px_rgba(234,179,8,0.8)]">W</span>
+                                    <span class="text-blue-500 drop-shadow-[0_0_5px_rgba(59,130,246,0.8)]">E</span>
+                                    <span class="text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.8)]">R</span>
+                                    <span class="text-pink-500 drop-shadow-[0_0_5px_rgba(236,72,153,0.8)]">!</span>
+                                </div>
+                                <div class="text-2xl font-black text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">
+                                    ${Object.values(char.stats).reduce((sum, val) => sum + (parseInt(val) || 0), 0)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Colonne Centrale & Droite -->
+                    <div class="lg:col-span-8 space-y-6">
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="md:col-span-2 bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl game-card">
+                                <h4 class="text-lg font-bold text-silver mb-4 uppercase tracking-wider">Attributs</h4>
+                                <div class="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
+                                    <div class="${derived.pc < 0 ? 'bg-red-900/40 border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.6)] animate-pulse text-red-100' : 'bg-slate-900 border-slate-700'} p-2 rounded-xl border flex flex-col items-center justify-center transition-colors"><div class="text-2xl mb-1">${attrEmojis.PC}</div><label class="text-[10px] font-bold ${derived.pc < 0 ? 'text-red-300' : 'text-slate-400'} uppercase">PC</label><span class="text-lg font-bold mt-1 ${derived.pc < 0 ? 'text-red-400' : ''}">${derived.pc}</span></div>
+                                    <div class="bg-slate-900 p-2 rounded-xl border border-slate-700 flex flex-col items-center justify-center"><div class="text-2xl mb-1">${attrEmojis.PA}</div><label class="text-[10px] font-bold text-slate-400 uppercase">PA</label><span class="text-lg font-bold mt-1">${derived.pa}</span></div>
+                                    <div class="bg-slate-900 p-2 rounded-xl border border-slate-700 flex flex-col items-center justify-center"><div class="text-2xl mb-1">${attrEmojis.PP}</div><label class="text-[10px] font-bold text-slate-400 uppercase">PP</label><span class="text-lg font-bold mt-1">${derived.totalPp}</span></div>
+                                    <div class="bg-slate-900 p-2 rounded-xl border border-slate-700 flex flex-col items-center justify-center"><div class="text-2xl mb-1">${attrEmojis.PT}</div><label class="text-[10px] font-bold text-slate-400 uppercase">PT</label><input type="number" value="${char.pt}" data-action="updateAttribute" data-payload="pt" class="w-full bg-slate-800 text-center font-bold rounded mt-1" min="0"/></div>
+                                    <div class="bg-slate-900 p-2 rounded-xl border border-slate-700 flex flex-col items-center justify-center ${char.pe >= 10 ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-slate-900 animate-pulse' : ''}"><div class="text-2xl mb-1">${attrEmojis.PE}</div><label class="text-[10px] font-bold text-slate-400 uppercase">PE</label><input type="number" value="${char.pe}" data-action="updateAttribute" data-payload="pe" class="w-full bg-slate-800 text-center font-bold rounded mt-1" min="0"/></div>
+                                    
+                                    <!-- BOUTON BASTOS -->
+                                    <div data-action="openBastosModal" class="bg-slate-900 p-2 rounded-xl border border-slate-700 flex flex-col items-center justify-center cursor-pointer hover:border-[#F59E0B] transition-colors group">
+                                        <div class="text-2xl mb-1 group-hover:scale-110 transition-transform">${attrEmojis.Bastos}</div>
+                                        <label class="text-[10px] font-bold text-slate-400 uppercase cursor-pointer">BASTOS</label>
+                                        <div class="w-full bg-slate-800 text-center font-bold rounded mt-1 text-[#F59E0B] py-1 text-sm">${char.bastos}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl game-card flex flex-col justify-center">
+                                <h4 class="text-lg font-bold text-silver mb-3 uppercase tracking-wider text-center">État Actif</h4>
+                                <select data-action="updateAttribute" data-payload="activeStatus" class="w-full bg-slate-900 p-3 rounded-xl border border-slate-600 text-sm font-bold focus:border-play-blue outline-none cursor-pointer text-center">
+                                    ${Object.entries(statusEffects).map(([k, e]) => `<option value="${k}" ${char.activeStatus === k ? 'selected' : ''}>${e.emoji} ${e.name}</option>`).join('')}
+                                </select>
+                                <p class="text-xs text-slate-400 mt-3 text-center min-h-[2.5rem] flex items-center justify-center">${statusEffects[char.activeStatus]?.description}</p>
+                            </div>
+                        </div>
+
+                        <!-- Inventaire -->
+                        <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
+                            <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
+                                <h4 class="text-2xl font-bold text-play-blue uppercase tracking-wider">Inventaire</h4>
+                                <div class="flex items-center gap-2">
+                                    <input type="file" id="importItemInput" accept=".json" data-action="importItem" class="hidden"/>
+                                    <button onclick="document.getElementById('importItemInput').click()" class="bg-slate-700 hover:bg-slate-600 shadow-[0_3px_0_#334155] active:shadow-[0_0px_0_#334155] active:translate-y-[3px] px-3 py-2 rounded-lg font-bold transition-all text-sm flex items-center justify-center" title="Importer un objet JSON">▶️</button>
+                                    <button data-action="openAddItemModal" class="bg-indigo-600 hover:bg-indigo-500 shadow-[0_3px_0_#4338ca] active:shadow-[0_0px_0_#4338ca] active:translate-y-[3px] px-4 py-2 rounded-lg font-bold transition-all text-sm flex items-center gap-2"><span>+</span> NOUVEL OBJET</button>
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-3">
+                                ${char.inventory.map(item => renderItem(item, 'inventory')).join('')}
+                            </div>
+                            ${char.inventory.length === 0 ? `<div class="text-center text-slate-500 italic py-8 border-2 border-dashed border-slate-700 rounded-xl">L'inventaire est vide.</div>` : ''}
+                        </div>
+
+                        <!-- Cybernétique, Mutation & Particularités -->
+                        <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
+                            <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
+                                <h4 class="text-2xl font-bold text-play-blue uppercase tracking-wider">Cyber., Mutations & Partic.</h4>
+                                <button data-action="addCybernetic" class="bg-indigo-600 hover:bg-indigo-500 shadow-[0_3px_0_#4338ca] active:shadow-[0_0px_0_#4338ca] active:translate-y-[3px] px-4 py-2 rounded-lg font-bold transition-all text-sm flex items-center gap-2"><span>+</span> AJOUTER</button>
+                            </div>
+                            <div class="flex flex-col gap-3">
+                                <!-- Vignette raciale inamovible et jaune brillante -->
+                                <div class="bg-yellow-500/20 p-4 rounded-xl border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.4)] relative game-card">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="text-2xl">🧬</span>
+                                        <div class="font-bold text-lg w-full text-yellow-400 uppercase tracking-widest">Trait Racial : ${raceAbilities[char.race]?.name}</div>
+                                    </div>
+                                    <div class="text-sm text-yellow-200 font-medium pl-8">
+                                        ${raceAbilities[char.race]?.description}
+                                    </div>
+                                </div>
+                                
+                                ${char.cybernetics.map(c => renderCyberneticItem(c)).join('')}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>`;
+            }
+
+            function renderItem(item, collectionName = 'inventory') {
+                const type = item.itemType || 'legacy';
+                const isExp = item.isExpanded !== false; 
+                
+                let colorClass = statColors.default;
+                if (type === 'weapon' || type === 'legacy') {
+                    colorClass = statColors[item.stat] || statColors.default;
+                } else if (type === 'armor') {
+                    colorClass = 'bg-purple-900/30 border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.1)]';
+                } else if (type === 'misc') {
+                    colorClass = 'bg-slate-800/80 border-slate-600';
+                } else if (type === 'backpack') {
+                    colorClass = 'bg-amber-900/40 border-amber-600 shadow-[0_0_10px_rgba(217,119,6,0.15)]';
+                }
+
+                const moveIcon = '🔄';
+                const moveTitle = 'Transférer l\'objet';
+
+                const canAttack = (type === 'weapon' || type === 'legacy') && item.stat && typeof item.diceBonus === 'number' && typeof item.successThreshold === 'number';
+                const isEquippedOrLegacy = type === 'legacy' || item.equipped === true;
+
+                let equipBtnHtml = '';
+                if (type === 'weapon' && collectionName === 'inventory') {
+                    const handsIcon = item.hands === 2 ? '🤲' : '🖐️';
+                    const equipClass = item.equipped ? 'bg-play-blue text-white shadow-[0_0_10px_rgba(99,102,241,0.8)] border-play-blue' : 'bg-slate-900 text-slate-500 opacity-60 grayscale hover:opacity-100 hover:grayscale-0 border-slate-600';
+                    equipBtnHtml = `<button data-action="toggleEquip" data-payload="${item.id}" class="w-8 h-8 flex flex-shrink-0 items-center justify-center rounded-full transition-all text-[14px] border ${equipClass}" title="${item.equipped ? 'Déséquiper' : 'Équiper'}">${handsIcon}</button>`;
+                }
+
+                let fieldsHtml = `
+                    <div class="flex flex-col flex-shrink-0 min-w-[120px] w-1/4">
+                        <label class="text-[9px] text-slate-300 font-bold uppercase pl-1">Objet</label>
+                        <input type="text" value="${item.name}" data-action="updateItem" data-payload="${collectionName}.${item.id}.name" class="w-full bg-transparent font-bold text-sm border-b border-slate-400/30 focus:border-white outline-none text-white px-1" placeholder="Nom..."/>
+                    </div>
+                `;
+
+                if (type === 'weapon' || type === 'legacy') {
+                    fieldsHtml += `
+                        <div class="flex flex-col flex-shrink-0">
+                            <label class="text-[9px] text-slate-300 font-bold uppercase text-center">STAT</label>
+                            <select data-action="updateItem" data-payload="${collectionName}.${item.id}.stat" class="w-[70px] bg-slate-900 text-white rounded border border-slate-600 text-xs p-1.5 outline-none focus:border-play-blue">
+                                <option value="">-</option>${Object.keys(statEmojis).map(s => `<option value="${s}" ${item.stat === s ? 'selected' : ''}>${s}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="flex flex-col flex-shrink-0">
+                            <label class="text-[9px] text-slate-300 font-bold uppercase text-center">BONUS</label>
+                            <div class="relative"><span class="absolute inset-y-0 left-1 flex items-center text-[10px] opacity-50">🎲</span><input type="number" value="${item.diceBonus}" data-action="updateItem" data-payload="${collectionName}.${item.id}.diceBonus" class="w-14 bg-slate-900 text-white rounded border border-slate-600 text-xs p-1.5 text-center pl-4 outline-none focus:border-play-blue"></div>
+                        </div>
+                        <div class="flex flex-col flex-shrink-0">
+                            <label class="text-[9px] text-slate-300 font-bold uppercase text-center">SEUIL</label>
+                            <div class="relative"><span class="absolute inset-y-0 left-1 flex items-center text-[10px] opacity-50">🏆</span><input type="number" value="${item.successThreshold}" data-action="updateItem" data-payload="${collectionName}.${item.id}.successThreshold" class="w-14 bg-slate-900 text-white rounded border border-slate-600 text-xs p-1.5 text-center pl-4 outline-none focus:border-play-blue"></div>
+                        </div>
+                    `;
+                }
+
+                let pcLabel = 'PC';
+                if (type === 'backpack') pcLabel = 'PC+';
+                else if (['weapon', 'armor', 'misc'].includes(type)) pcLabel = 'PC-';
+
+                if (type === 'weapon' || type === 'armor' || type === 'misc' || type === 'backpack' || type === 'legacy') {
+                    fieldsHtml += `
+                        <div class="flex flex-col flex-shrink-0">
+                            <label class="text-[9px] text-slate-300 font-bold uppercase text-center">${pcLabel}</label>
+                            <div class="relative"><span class="absolute inset-y-0 left-1 flex items-center text-[10px] opacity-50">📦</span><input type="number" value="${item.weight}" data-action="updateItem" data-payload="${collectionName}.${item.id}.weight" class="w-12 bg-slate-900 text-white rounded border border-slate-600 text-xs p-1.5 text-center pl-4 outline-none focus:border-play-blue" ${type !== 'legacy' ? 'min="0"' : ''}></div>
+                        </div>
+                    `;
+                }
+
+                if (type === 'armor' || type === 'legacy') {
+                    fieldsHtml += `
+                        <div class="flex flex-col flex-shrink-0">
+                            <label class="text-[9px] text-slate-300 font-bold uppercase text-center">PP</label>
+                            <div class="relative"><span class="absolute inset-y-0 left-1 flex items-center text-[10px] opacity-50">💜</span><input type="number" value="${item.armorPoints}" data-action="updateItem" data-payload="${collectionName}.${item.id}.armorPoints" class="w-12 bg-slate-900 text-white rounded border border-slate-600 text-xs p-1.5 text-center pl-4 outline-none focus:border-play-blue"></div>
+                        </div>
+                    `;
+                }
+
+                if (type === 'weapon' || type === 'legacy') {
+                    fieldsHtml += `
+                        <div class="flex flex-col flex-shrink-0">
+                            <label class="text-[9px] text-slate-300 font-bold uppercase text-center" title="Consommation en Bastos">CONSO</label>
+                            <div class="relative"><span class="absolute inset-y-0 left-1 flex items-center text-[10px] opacity-50">₿</span><input type="text" value="${item.bastosCost}" data-action="updateItem" data-payload="${collectionName}.${item.id}.bastosCost" class="w-16 bg-slate-900 text-white rounded border border-slate-600 text-xs p-1.5 text-center pl-4 outline-none focus:border-play-blue"></div>
+                        </div>
+                    `;
+                }
+
+                return `<div class="${colorClass} p-3 rounded-xl border-2 relative game-card flex flex-col">
+                    <div class="flex items-center gap-2 w-full">
+                        ${equipBtnHtml}
+                        <button data-action="toggleExpand" data-payload="${collectionName}.${item.id}" class="w-8 h-8 flex flex-shrink-0 items-center justify-center bg-slate-900 rounded-full text-slate-300 hover:text-white hover:bg-slate-700 transition-colors shadow-md border border-slate-600">
+                            ${isExp ? '▼' : '▶'}
+                        </button>
+                        
+                        <div class="flex-grow flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
+                            ${fieldsHtml}
+                        </div>
+                        
+                        <div class="flex gap-1 flex-shrink-0">
+                            <button data-action="exportItem" data-payload="${collectionName}.${item.id}" class="w-7 h-7 flex items-center justify-center bg-slate-900 text-slate-400 hover:bg-green-500 hover:text-white rounded-full transition-colors text-xs shadow-md border border-slate-600" title="Sauvegarder l'objet (JSON)">💾</button>
+                            <button data-action="promptMoveItem" data-payload="${collectionName}.${item.id}" class="w-7 h-7 flex items-center justify-center bg-slate-900 text-slate-400 hover:bg-play-blue hover:text-white rounded-full transition-colors text-xs shadow-md border border-slate-600" title="${moveTitle}">${moveIcon}</button>
+                            <button data-action="deleteItem" data-payload="${collectionName}.${item.id}" class="w-7 h-7 flex items-center justify-center bg-slate-900 text-slate-400 hover:bg-red-600 hover:text-white rounded-full transition-colors text-xs shadow-md border border-slate-600" title="Supprimer">✕</button>
+                        </div>
+                    </div>
+                    
+                    ${isExp ? `
+                        <div class="mt-3 pt-4 border-t border-slate-500/30 relative px-2">
+                            <span class="absolute -top-[9px] left-1/2 -translate-x-1/2 bg-slate-800/90 px-3 rounded text-[10px] font-bold text-slate-300 shadow-sm backdrop-blur-sm border border-slate-600">DESCRIPTION & UTILISATION</span>
+                            <textarea data-action="updateItem" data-payload="${collectionName}.${item.id}.specialAbility" class="w-full bg-slate-900/60 text-white rounded-lg p-3 text-sm resize-none h-16 border border-slate-600 focus:border-white outline-none" placeholder="Effet spécial / Description...">${item.specialAbility}</textarea>
+                            
+                            ${canAttack && collectionName === 'inventory' ? 
+                                (isEquippedOrLegacy ? 
+                                    `<button data-action="attack" data-payload="${collectionName}.${item.id}" class="w-full mt-2 bg-red-600 hover:bg-red-500 shadow-[0_3px_0_#991b1b] active:shadow-[0_0px_0_#991b1b] active:translate-y-[3px] py-2 rounded-lg font-bold text-sm uppercase tracking-widest transition-all flex justify-center items-center gap-2"><span>💥</span> UTILISER</button>` 
+                                    : `<div class="w-full mt-2 bg-slate-800 text-slate-500 border border-slate-700 border-dashed py-2 rounded-lg font-bold text-xs uppercase tracking-widest text-center flex justify-center items-center">⚠ DOIT ÊTRE ÉQUIPÉE POUR ATTAQUER</div>`
+                                ) 
+                            : ''}
+                        </div>
+                    ` : ''}
+                </div>`;
+            }
+
+            function renderCyberneticItem(c) {
+                const isExp = c.isExpanded !== false;
+                let borderClass = 'border-slate-400 shadow-[0_0_15px_rgba(203,213,225,0.3)] bg-slate-700/30'; 
+                let emoji = '🦾';
+                if (c.type === 'mutation') {
+                    borderClass = 'border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)] bg-purple-900/40';
+                    emoji = '🦠';
+                } else if (c.type === 'particularity') {
+                    borderClass = 'border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.4)] bg-yellow-900/40';
+                    emoji = '✨';
+                }
+
+                const isWeapon = c.stat && typeof c.diceBonus === 'number' && typeof c.successThreshold === 'number';
+
+                return `<div class="${borderClass} p-3 rounded-xl border-2 relative game-card flex flex-col">
+                    <div class="flex items-center gap-2 w-full">
+                        <button data-action="toggleExpand" data-payload="cybernetics.${c.id}" class="w-8 h-8 flex flex-shrink-0 items-center justify-center bg-slate-900 rounded-full text-slate-300 hover:text-white hover:bg-slate-700 transition-colors shadow-md border border-slate-600">
+                            ${isExp ? '▼' : '▶'}
+                        </button>
+                        
+                        <div class="flex-grow flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
+                            <div class="flex flex-col flex-shrink-0 w-24">
+                                <label class="text-[9px] text-slate-300 font-bold uppercase text-center">TYPE</label>
+                                <select data-action="updateCybernetic" data-payload="${c.id}.type" class="w-full bg-slate-900 rounded border border-slate-600 text-xs p-1.5 outline-none text-white">
+                                    <option value="cybernetic" ${c.type === 'cybernetic' ? 'selected' : ''}>Cyber</option>
+                                    <option value="mutation" ${c.type === 'mutation' ? 'selected' : ''}>Mutat.</option>
+                                    <option value="particularity" ${c.type === 'particularity' ? 'selected' : ''}>Partic.</option>
+                                </select>
+                            </div>
+                            
+                            <div class="flex flex-col flex-shrink-0 min-w-[120px] w-1/3 relative">
+                                <span class="absolute left-0 bottom-[6px] text-[16px]">${emoji}</span>
+                                <label class="text-[9px] text-slate-300 font-bold uppercase pl-6">NOM</label>
+                                <input type="text" value="${c.name}" data-action="updateCybernetic" data-payload="${c.id}.name" class="w-full pl-6 bg-transparent font-bold text-sm border-b border-slate-400/30 focus:border-white outline-none text-white pb-1"/>
+                            </div>
+                            
+                            <div class="flex flex-col flex-shrink-0">
+                                <label class="text-[9px] text-slate-300 font-bold uppercase text-center">STAT</label>
+                                <select data-action="updateCybernetic" data-payload="${c.id}.stat" class="w-[70px] bg-slate-900 text-white rounded border border-slate-600 text-xs p-1.5 outline-none">
+                                    <option value="">-</option>${Object.keys(statEmojis).map(s => `<option value="${s}" ${c.stat === s ? 'selected' : ''}>${s}</option>`).join('')}
+                                </select>
+                            </div>
+                            
+                            <div class="flex flex-col flex-shrink-0">
+                                <label class="text-[9px] text-slate-300 font-bold uppercase text-center">BONUS</label>
+                                <div class="relative"><span class="absolute inset-y-0 left-1 flex items-center text-[10px] opacity-50">🎲</span><input type="number" value="${c.diceBonus}" data-action="updateCybernetic" data-payload="${c.id}.diceBonus" class="w-14 bg-slate-900 text-white rounded border border-slate-600 text-xs p-1.5 text-center pl-4 outline-none"></div>
+                            </div>
+                            
+                            <div class="flex flex-col flex-shrink-0">
+                                <label class="text-[9px] text-slate-300 font-bold uppercase text-center">SEUIL</label>
+                                <div class="relative"><span class="absolute inset-y-0 left-1 flex items-center text-[10px] opacity-50">🏆</span><input type="number" value="${c.successThreshold}" data-action="updateCybernetic" data-payload="${c.id}.successThreshold" class="w-14 bg-slate-900 text-white rounded border border-slate-600 text-xs p-1.5 text-center pl-4 outline-none"></div>
+                            </div>
+                        </div>
+                        
+                        <button data-action="deleteCybernetic" data-payload="${c.id}" class="w-7 h-7 flex-shrink-0 flex items-center justify-center bg-slate-900 text-slate-400 hover:bg-red-600 hover:text-white rounded-full transition-colors text-xs shadow-md border border-slate-600">✕</button>
+                    </div>
+                    
+                    ${isExp ? `
+                        <div class="mt-3 pt-4 border-t border-slate-500/30 relative px-2">
+                            <span class="absolute -top-[9px] left-1/2 -translate-x-1/2 bg-slate-800/90 px-3 rounded text-[10px] font-bold text-slate-300 shadow-sm backdrop-blur-sm border border-slate-600">DESCRIPTION & UTILISATION</span>
+                            <textarea data-action="updateCybernetic" data-payload="${c.id}.ability" class="w-full bg-slate-900/60 text-white rounded-lg p-3 text-sm resize-none h-16 border border-slate-600 outline-none focus:border-white" placeholder="Description de la compétence ou particularité...">${c.ability}</textarea>
+                            
+                            ${isWeapon ? `<button data-action="attack" data-payload="cybernetics.${c.id}" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 shadow-[0_3px_0_#4338ca] active:shadow-[0_0px_0_#4338ca] active:translate-y-[3px] py-2 rounded-lg font-bold text-sm uppercase tracking-widest transition-all flex justify-center items-center gap-2"><span>🎲</span> UTILISER</button>` : ''}
+                        </div>
+                    ` : ''}
+                </div>`;
+            }
+
+            function renderModals() {
+                let m = '';
+
+                if (state.mapModalOpen) m += `
+                    <div class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                        <div class="bg-slate-800 w-full max-w-6xl rounded-2xl overflow-hidden flex flex-col h-[80vh] border border-slate-600 shadow-2xl">
+                            <div class="p-4 flex justify-between items-center bg-slate-900 border-b border-slate-700">
+                                <h3 class="font-bold text-xl text-play-blue flex items-center gap-2"><span class="text-2xl">🌏</span> Carte d'Aldébaran</h3>
+                                <button data-action="closeModal" data-payload="mapModalOpen" class="w-8 h-8 flex items-center justify-center bg-slate-800 hover:bg-red-600 rounded-full font-bold transition-colors">✕</button>
+                            </div>
+                            <iframe class="flex-grow w-full h-full border-0" allowfullscreen allow="geolocation" src="//framacarte.org/fr/map/aldebaran_185113?scaleControl=false&miniMap=false&scrollWheelZoom=false&zoomControl=true&editMode=disabled&moreControl=true&searchControl=null&tilelayersControl=null&embedControl=null&datalayersControl=true&onLoadPanel=none&captionBar=false&captionMenus=true"></iframe>
+                            <div class="p-4 bg-slate-900 border-t border-slate-700 text-center">
+                                <a href="//framacarte.org/fr/map/aldebaran_185113?scaleControl=false&miniMap=false&scrollWheelZoom=true&zoomControl=true&editMode=disabled&moreControl=true&searchControl=null&tilelayersControl=null&embedControl=null&datalayersControl=true&onLoadPanel=none&captionBar=false&captionMenus=true" target="_blank" class="text-blue-400 hover:text-blue-300 font-bold transition-colors flex items-center justify-center gap-2"><span>Voir en plein écran interactif</span> ↗</a>
+                            </div>
+                        </div>
+                    </div>`;
+
+                if (state.notesModalOpen) m += `
+                    <div class="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-start pt-10 p-4 backdrop-blur-sm overflow-y-auto">
+                        <div class="bg-slate-800 p-6 rounded-3xl shadow-2xl max-w-4xl w-full border-t-4 border-green-500 flex flex-col relative mb-10">
+                            <button data-action="closeModal" data-payload="notesModalOpen" class="absolute top-4 right-4 bg-slate-700 hover:bg-red-600 w-10 h-10 rounded-full font-bold transition-colors z-10 text-white shadow-md">✕</button>
+                            <div class="flex justify-between items-center mb-6 pr-12 border-b border-slate-700 pb-4">
+                                <h3 class="text-3xl font-bold text-green-400 flex items-center gap-3"><span class="text-4xl">📋</span> Journal de Bord</h3>
+                                <button data-action="addNote" class="bg-green-600 hover:bg-green-500 shadow-[0_4px_0_#166534] active:shadow-[0_0px_0_#166534] active:translate-y-1 text-white font-bold py-2 px-4 rounded-xl transition-all flex items-center gap-2 uppercase tracking-widest text-sm flex-shrink-0"><span>+</span> 📜 PARAGRAPHE</button>
+                            </div>
+                            
+                            <div class="flex flex-col gap-4">
+                                ${state.character.notes.map(note => `
+                                    <div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden game-card">
+                                        <div class="flex items-center gap-3 p-3 bg-slate-800 border-b border-slate-700">
+                                            <button data-action="toggleNote" data-payload="${note.id}" class="w-8 h-8 flex flex-shrink-0 items-center justify-center bg-slate-900 rounded-full text-slate-300 hover:text-white hover:bg-green-600 transition-colors shadow-md border border-slate-600">
+                                                ${note.isExpanded !== false ? '▼' : '▶'}
+                                            </button>
+                                            <span class="text-2xl">📜</span>
+                                            <input type="text" value="${note.title}" data-action="updateNote" data-payload="${note.id}.title" class="flex-grow bg-transparent font-bold text-lg text-green-400 outline-none border-b border-transparent focus:border-green-500 transition-colors px-2 placeholder-green-700" placeholder="Titre du paragraphe..."/>
+                                            
+                                            <input type="file" id="noteImageInput_${note.id}" accept="image/*" data-action="uploadNoteImage" data-payload="${note.id}" class="hidden" />
+                                            <button data-action="triggerNoteImageUpload" data-payload="${note.id}" class="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-slate-900 text-slate-400 hover:bg-play-blue hover:text-white rounded-full transition-colors text-sm shadow-md border border-slate-600" title="Joindre une image">🧷</button>
+                                            
+                                            <button data-action="deleteNote" data-payload="${note.id}" class="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-slate-900 text-slate-400 hover:bg-red-600 hover:text-white rounded-full transition-colors text-sm shadow-md border border-slate-600" title="Supprimer">✕</button>
+                                        </div>
+                                        ${note.isExpanded !== false ? `
+                                            <div class="p-3 flex gap-4">
+                                                <textarea data-action="updateNote" data-payload="${note.id}.content" class="${note.image ? 'w-2/3' : 'w-full'} min-h-[120px] bg-transparent text-white outline-none resize-y custom-scrollbar leading-relaxed" placeholder="Corps du paragraphe..." oninput="this.style.height = '120px'; this.style.height = this.scrollHeight + 'px'">${note.content}</textarea>
+                                                ${note.image ? `
+                                                    <div class="w-1/3 relative group rounded-xl overflow-hidden border-2 border-slate-600 shadow-inner flex-shrink-0 bg-slate-800/50 flex items-center justify-center max-h-[200px]">
+                                                        <img src="${note.image}" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300" data-action="openNoteImagePreview" data-payload="${note.id}" title="Agrandir l'image" />
+                                                        <button data-action="removeNoteImage" data-payload="${note.id}" class="absolute top-2 right-2 w-7 h-7 bg-red-600 hover:bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-sm font-bold shadow-lg" title="Retirer l'image">✕</button>
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                                ${state.character.notes.length === 0 ? `<div class="text-center text-slate-500 italic py-10 border-2 border-dashed border-slate-700 rounded-xl">Aucune note. Cliquez sur "+ PARAGRAPHE" pour commencer à écrire.</div>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+
+                if (state.genericRollModalOpen) m += `
+                    <div class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                        <form data-action="performGenericRoll" class="bg-slate-800 p-8 rounded-3xl shadow-2xl max-w-sm w-full border border-purple-500 text-center">
+                            <h3 class="text-2xl font-bold mb-6 text-purple-400 uppercase tracking-widest">Jet Libre</h3>
+                            <div class="space-y-6">
+                                <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
+                                    <label class="block text-slate-400 font-bold text-sm mb-2">NOMBRE DE DÉS <span class="text-xl">🎲</span></label>
+                                    <input type="number" value="${state.genericRoll.dice}" data-action="updateGenericRoll" data-payload="dice" class="w-full bg-slate-800 text-white border border-slate-600 rounded-lg p-3 text-center text-xl font-bold outline-none focus:border-purple-500" min="1" />
+                                </div>
+                                <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
+                                    <label class="block text-slate-400 font-bold text-sm mb-2">SEUIL DE RÉUSSITE <span class="text-xl">🏆</span></label>
+                                    <input type="number" value="${state.genericRoll.threshold}" data-action="updateGenericRoll" data-payload="threshold" class="w-full bg-slate-800 text-white border border-slate-600 rounded-lg p-3 text-center text-xl font-bold outline-none focus:border-purple-500" min="1" max="10" />
+                                </div>
+                            </div>
+                            <div class="flex gap-4 mt-8">
+                                <button type="button" data-action="closeModal" data-payload="genericRollModalOpen" class="w-1/3 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition-colors">Retour</button>
+                                <button type="submit" class="w-2/3 bg-purple-600 hover:bg-purple-500 shadow-[0_4px_0_#6b21a8] active:shadow-[0_0px_0_#6b21a8] active:translate-y-1 text-white font-bold py-3 rounded-xl uppercase transition-all">Lancer</button>
+                            </div>
+                        </form>
+                    </div>`;
+
+                if (state.fractureModalOpen) m += `
+                    <div class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                        <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl max-w-md w-full border-2 border-red-600">
+                            <h3 class="text-2xl font-bold mb-6 text-red-400 text-center flex flex-col items-center gap-2"><span class="text-4xl">🦴</span> Localisation de la Fracture</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                ${['Tête', 'Torse', 'Bras G', 'Bras D', 'Jambe G', 'Jambe D'].map(part => `
+                                    <button data-action="selectFractureLocation" data-payload="${part}" class="bg-slate-900 hover:bg-red-600 text-slate-300 hover:text-white font-bold py-4 px-4 rounded-xl border border-slate-700 hover:border-red-500 transition-colors shadow-md">
+                                        ${part}
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <button data-action="closeModal" data-payload="fractureModalOpen" class="w-full mt-6 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-4 rounded-xl">Annuler</button>
+                        </div>
+                    </div>`;
+
+                if (state.bankModalOpen) m += `
+                    <div class="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-start pt-10 p-4 backdrop-blur-sm overflow-y-auto">
+                        <div class="bg-slate-800 p-6 rounded-3xl shadow-2xl max-w-4xl w-full border-t-4 border-red-500 relative mb-10">
+                            <button data-action="closeModal" data-payload="bankModalOpen" class="absolute top-4 right-4 bg-slate-700 hover:bg-red-600 w-10 h-10 rounded-full font-bold transition-colors z-10">✕</button>
+                            <h3 class="text-3xl font-bold mb-6 text-red-400 text-center flex justify-center items-center gap-3"><span class="text-4xl">💳</span> Coffre Quantum</h3>
+                            
+                            <div class="flex flex-col gap-3 mb-6">
+                                <!-- Ligne Bastos inamovible -->
+                                <div class="bg-yellow-500/20 p-4 rounded-xl border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.4)] relative flex flex-col sm:flex-row items-center justify-between game-card flex-shrink-0 gap-4">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-2xl">💰</span>
+                                        <div class="font-bold text-lg text-yellow-400 uppercase tracking-widest">BASTOS STOCKÉS</div>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="relative">
+                                            <input type="number" value="${state.character.bankBastos || 0}" data-action="updateAttribute" data-payload="bankBastos" class="w-32 bg-slate-900 text-white rounded-lg border border-yellow-500/50 p-2 text-center font-bold outline-none focus:border-yellow-400 text-lg pr-6" min="0" title="Modifier directement le solde stocké">
+                                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-yellow-500 font-bold">₿</span>
+                                        </div>
+                                        <button data-action="openTransferBastosModal" class="bg-yellow-600 hover:bg-yellow-500 shadow-[0_4px_0_#ca8a04] active:shadow-[0_0px_0_#ca8a04] active:translate-y-1 w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-all flex-shrink-0" title="Retirer et envoyer dans la bourse du personnage">💸</button>
+                                    </div>
+                                </div>
+
+                                ${state.character.bankInventory.map(item => renderItem(item, 'bankInventory')).join('')}
+                                ${state.character.bankInventory.length === 0 ? `<div class="text-center text-slate-500 italic py-10 border-2 border-dashed border-slate-700 rounded-xl">Aucun objet dans le coffre.</div>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+                    
+                if (state.bastosModalOpen) m += `
+                    <div class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                        <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl max-w-sm w-full border-2 border-[#F59E0B] text-center">
+                            <h3 class="text-2xl font-bold mb-6 text-[#F59E0B] uppercase tracking-widest flex items-center justify-center gap-2">
+                                <span class="text-3xl">₿</span> GAIN / PERTE
+                            </h3>
+                            <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 mb-6">
+                                <input type="number" value="${state.bastosInputValue}" data-action="updateBastosInput" placeholder="Valeur..." class="w-full bg-slate-800 text-white border border-slate-600 rounded-lg p-4 text-center text-3xl font-bold outline-none focus:border-[#F59E0B]" min="0" autofocus />
+                            </div>
+                            <div class="flex gap-4">
+                                <button data-action="modifyBastos" data-payload="-" class="w-1/3 bg-red-600 hover:bg-red-500 shadow-[0_4px_0_#991b1b] active:shadow-[0_0px_0_#991b1b] active:translate-y-1 text-white font-bold py-4 rounded-xl text-3xl transition-all">-</button>
+                                <button data-action="depositToBank" class="w-1/3 bg-blue-600 hover:bg-blue-500 shadow-[0_4px_0_#1d4ed8] active:shadow-[0_0px_0_#1d4ed8] active:translate-y-1 text-white font-bold py-4 rounded-xl text-3xl transition-all" title="Déposer dans le coffre Quantum">🏦</button>
+                                <button data-action="modifyBastos" data-payload="+" class="w-1/3 bg-green-600 hover:bg-green-500 shadow-[0_4px_0_#166534] active:shadow-[0_0px_0_#166534] active:translate-y-1 text-white font-bold py-4 rounded-xl text-3xl transition-all">+</button>
+                            </div>
+                            <button data-action="closeModal" data-payload="bastosModalOpen" class="w-full mt-6 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-4 rounded-xl transition-colors">Annuler</button>
+                        </div>
+                    </div>`;
+
+                if (state.vehicleModalOpen && state.character.vehicle) {
+                    const v = state.character.vehicle;
+                    const cargoMax = (v.seats || 0) * 5;
+                    const cargoUsed = v.inventory.reduce((sum, item) => sum + (Number(item.weight) || 0), 0);
+                    const cargoRemaining = cargoMax - cargoUsed;
+                    const cargoIsOverloaded = cargoRemaining < 0;
+
+                    const vPvPercent = v.pvMax > 0 ? (v.pv / v.pvMax) * 100 : 0;
+                    
+                    m += `
+                    <div class="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-start pt-10 p-4 backdrop-blur-sm overflow-y-auto">
+                        <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl max-w-4xl w-full border-t-4 border-yellow-500 relative mb-10">
+                            <button data-action="closeModal" data-payload="vehicleModalOpen" class="absolute top-4 right-4 bg-slate-700 hover:bg-red-600 w-10 h-10 rounded-full font-bold transition-colors z-10">✕</button>
+                            <h3 class="text-3xl font-bold mb-8 text-yellow-500 text-center flex justify-center items-center gap-3"><span class="text-4xl">🚙</span> Gestion du Véhicule</h3>
+                            
+                            <div class="flex flex-col md:flex-row gap-6 mb-8 bg-slate-900 p-6 rounded-2xl border border-slate-700 items-center md:items-center">
+                                
+                                <!-- Avatar du Véhicule -->
+                                <div class="w-24 h-24 md:w-32 md:h-32 relative flex-shrink-0 bg-slate-800 rounded-full overflow-hidden border-4 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.3)] cursor-pointer group" onclick="document.getElementById('editVehiclePhotoInput').click()">
+                                    ${v.photo ? `<img src="${v.photo}" class="w-full h-full object-cover absolute inset-0 z-0">` 
+                                    : `<div class="w-full h-full absolute inset-0 z-0 flex items-center justify-center text-5xl text-slate-600 pb-2">🚙</div>`}
+                                    <div class="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-30">
+                                        <span class="text-[10px] md:text-xs font-bold text-white uppercase tracking-widest text-center">Modifier</span>
+                                    </div>
+                                    <input type="file" id="editVehiclePhotoInput" class="hidden" accept="image/*" data-action="uploadPhoto" data-payload="vehicle">
+                                </div>
+
+                                <div class="flex-grow w-full flex flex-col gap-4">
+                                    <div class="flex flex-col gap-2">
+                                        <label class="text-xs font-bold text-slate-400 uppercase tracking-widest">Nom du modèle</label>
+                                        <input type="text" value="${v.name}" data-action="updateVehicle" data-payload="name" class="w-full bg-slate-800 text-white border border-slate-600 rounded-xl p-3 text-lg font-bold focus:border-yellow-500 outline-none"/>
+                                    </div>
+                                    <div class="flex flex-col gap-2">
+                                        <div class="flex justify-between items-end">
+                                            <span class="font-bold text-slate-300">Intégrité (PV)</span>
+                                            <span class="font-bold text-xl">${v.pv} <span class="text-sm text-slate-500">/ ${v.pvMax}</span></span>
+                                        </div>
+                                        <div class="w-full bg-slate-800 h-4 rounded-full overflow-hidden border border-slate-600">
+                                            <div class="h-full bg-yellow-500 transition-all" style="width: ${vPvPercent}%"></div>
+                                        </div>
+                                        <div class="flex gap-2 mt-2">
+                                            <button data-action="changeVehiclePv" data-payload="-1" class="flex-1 bg-red-900/50 hover:bg-red-600 text-red-300 hover:text-white rounded-lg py-1 font-bold transition-colors">- 1 PV</button>
+                                            <button data-action="changeVehiclePv" data-payload="1" class="flex-1 bg-green-900/50 hover:bg-green-600 text-green-300 hover:text-white rounded-lg py-1 font-bold transition-colors">+ 1 PV</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-8">
+                                <div class="bg-slate-900 p-3 rounded-xl border border-slate-700 text-center"><label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">PV MAX</label><input type="number" value="${v.pvMax}" data-action="updateVehicle" data-payload="pvMax" class="w-full bg-slate-800 rounded p-1 text-center font-bold outline-none focus:border-yellow-500"/></div>
+                                <div class="bg-slate-900 p-3 rounded-xl border border-slate-700 text-center"><label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">TAILLE</label><select data-action="updateVehicle" data-payload="size" class="w-full bg-slate-800 rounded p-1 text-center font-bold outline-none focus:border-yellow-500">${['F1', 'F2', 'F3', 'F4'].map(f => `<option ${v.size === f ? 'selected' : ''}>${f}</option>`).join('')}</select></div>
+                                <div class="bg-slate-900 p-3 rounded-xl border border-slate-700 text-center"><label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">MOTEUR 🚀</label><div class="flex gap-1"><input type="number" value="${v.engine}" data-action="updateVehicle" data-payload="engine" class="w-full bg-slate-800 rounded p-1 text-center font-bold outline-none focus:border-yellow-500"/><button data-action="useEngine" class="bg-green-600 hover:bg-green-500 rounded px-2 font-bold text-xs">🎲</button></div></div>
+                                <div class="bg-slate-900 p-3 rounded-xl border border-slate-700 text-center"><label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">ARMES 💣</label><div class="flex gap-1"><input type="number" value="${v.weaponry}" data-action="updateVehicle" data-payload="weaponry" class="w-full bg-slate-800 rounded p-1 text-center font-bold outline-none focus:border-yellow-500"/><button data-action="useWeaponry" class="bg-red-600 hover:bg-red-500 rounded px-2 font-bold text-xs">🎲</button></div></div>
+                                <div class="bg-slate-900 p-3 rounded-xl border border-slate-700 text-center"><label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">PLACES 👥</label><input type="number" value="${v.seats}" data-action="updateVehicle" data-payload="seats" class="w-full bg-slate-800 rounded p-1 text-center font-bold outline-none focus:border-yellow-500"/></div>
+                                <div class="${cargoIsOverloaded ? 'bg-red-900/40 border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.6)] animate-pulse text-red-100' : 'bg-slate-900 border-slate-700'} p-3 rounded-xl border text-center transition-colors">
+                                    <label class="block text-[10px] font-bold ${cargoIsOverloaded ? 'text-red-300' : 'text-slate-400'} uppercase mb-1">CARGO 📦</label>
+                                    <span class="block w-full bg-slate-800/80 rounded p-1 font-bold ${cargoIsOverloaded ? 'text-red-400' : 'text-yellow-500'}">
+                                        ${cargoRemaining} <span class="text-xs text-slate-500 font-normal">(${cargoUsed}/${cargoMax})</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-700">
+                                <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                                    <h4 class="font-bold text-slate-300 uppercase tracking-widest text-sm">Inventaire du Véhicule</h4>
+                                </div>
+                                <div class="flex flex-col gap-3">
+                                    ${v.inventory.map(item => renderItem(item, 'vehicle')).join('')}
+                                    ${v.inventory.length === 0 ? `<p class="text-center italic text-slate-500 py-4">L'inventaire du véhicule est vide.</p>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+
+                if (state.moveItemModalOpen) {
+                    const src = state.moveItemSource;
+                    const hasVehicle = !!state.character.vehicle;
+                    
+                    m += `
+                    <div class="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+                        <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl max-w-sm w-full border-2 border-play-blue text-center">
+                            <h3 class="text-2xl font-bold mb-4 text-white">Transférer l'objet</h3>
+                            <div class="text-4xl mb-4">🔄</div>
+                            <p class="text-slate-300 font-medium mb-8">
+                                Vers quelle destination souhaitez-vous envoyer cet objet ?
+                            </p>
+                            <div class="flex flex-col gap-3">
+                                ${src !== 'inventory' ? `<button data-action="confirmMoveItem" data-payload="inventory" class="w-full bg-indigo-600 hover:bg-indigo-500 shadow-[0_4px_0_#4338ca] active:shadow-[0_0px_0_#4338ca] active:translate-y-1 text-white font-bold py-3 rounded-xl transition-all">Vers Inventaire</button>` : ''}
+                                
+                                ${src !== 'bankInventory' ? `<button data-action="confirmMoveItem" data-payload="bankInventory" class="w-full bg-red-600 hover:bg-red-500 shadow-[0_4px_0_#991b1b] active:shadow-[0_0px_0_#991b1b] active:translate-y-1 text-white font-bold py-3 rounded-xl transition-all">Vers Coffre Quantum</button>` : ''}
+                                
+                                ${src !== 'vehicle' && hasVehicle ? `<button data-action="confirmMoveItem" data-payload="vehicle" class="w-full bg-yellow-600 hover:bg-yellow-500 shadow-[0_4px_0_#ca8a04] active:shadow-[0_0px_0_#ca8a04] active:translate-y-1 text-white font-bold py-3 rounded-xl transition-all">Vers Véhicule</button>` : ''}
+                                
+                                <button data-action="closeModal" data-payload="moveItemModalOpen" class="w-full mt-4 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition-colors">Annuler</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+
+                if (state.transferBastosModalOpen) {
+                    m += `
+                    <div class="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+                        <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl max-w-sm w-full border-2 border-yellow-500 text-center">
+                            <h3 class="text-2xl font-bold mb-4 text-yellow-400 uppercase tracking-widest">Retrait</h3>
+                            <p class="text-slate-300 font-medium mb-6">Combien de Bastos voulez-vous transférer vers votre bourse ?<br><span class="text-sm text-slate-500">(Maximum : ${state.character.bankBastos} ₿)</span></p>
+                            <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 mb-6 relative">
+                                <input type="number" value="${state.transferBastosAmount}" data-action="updateTransferBastosAmount" placeholder="0" class="w-full bg-slate-800 text-white border border-slate-600 rounded-lg p-4 text-center text-3xl font-bold outline-none focus:border-yellow-500 pr-8" min="1" max="${state.character.bankBastos}" autofocus />
+                                <span class="absolute right-8 top-1/2 -translate-y-1/2 text-yellow-500 font-bold text-2xl">₿</span>
+                            </div>
+                            <div class="flex gap-4">
+                                <button data-action="closeModal" data-payload="transferBastosModalOpen" class="w-1/2 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition-colors">Annuler</button>
+                                <button data-action="confirmTransferBastos" class="w-1/2 bg-yellow-600 hover:bg-yellow-500 shadow-[0_4px_0_#ca8a04] active:shadow-[0_0px_0_#ca8a04] active:translate-y-1 text-white font-bold py-3 rounded-xl transition-all">Valider</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+
+                if (state.newItemModalOpen) {
+                    m += `
+                    <div class="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+                        <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl max-w-md w-full border-2 border-indigo-500 text-center">
+                            <h3 class="text-2xl font-bold mb-6 text-indigo-400 uppercase tracking-widest">Type d'objet</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                                
+                                <!-- Encart centralisé pour les ARMES -->
+                                <div class="col-span-1 sm:col-span-2 bg-red-900/40 p-4 rounded-xl border border-red-500 shadow-md flex flex-col items-center justify-center gap-3">
+                                    <div class="flex items-center gap-2 text-red-100">
+                                        <span class="text-3xl">💥</span> <span class="text-lg font-bold uppercase tracking-wider">ARME</span>
+                                    </div>
+                                    <div class="flex gap-2 w-full mt-1">
+                                        <button data-action="createItem" data-payload="weapon.1" class="flex-1 bg-red-800 hover:bg-red-600 text-white font-bold py-2 px-1 rounded-lg transition-colors text-[10px] sm:text-xs flex flex-col items-center justify-center gap-1 shadow"><span class="text-xl">🖐️</span> 1 MAIN</button>
+                                        <button data-action="createItem" data-payload="weapon.2" class="flex-1 bg-red-800 hover:bg-red-600 text-white font-bold py-2 px-1 rounded-lg transition-colors text-[10px] sm:text-xs flex flex-col items-center justify-center gap-1 shadow"><span class="text-xl">🤲</span> 2 MAINS</button>
+                                    </div>
+                                </div>
+                                
+                                <button data-action="createItem" data-payload="armor" class="bg-purple-900/40 hover:bg-purple-600 text-purple-100 font-bold py-4 px-4 rounded-xl border border-purple-500 transition-colors shadow-md flex flex-col items-center justify-center gap-2 text-lg">
+                                    <span class="text-3xl">🛡️</span> <span class="text-xs uppercase tracking-wider">Armure</span>
+                                </button>
+                                <button data-action="createItem" data-payload="backpack" class="bg-amber-900/40 hover:bg-amber-600 text-amber-100 font-bold py-4 px-4 rounded-xl border border-amber-500 transition-colors shadow-md flex flex-col items-center justify-center gap-2 text-lg">
+                                    <span class="text-3xl">🎒</span> <span class="text-xs uppercase tracking-wider">Sac à dos</span>
+                                </button>
+                                <button data-action="createItem" data-payload="misc" class="col-span-1 sm:col-span-2 bg-slate-700 hover:bg-slate-500 text-slate-100 font-bold py-4 px-4 rounded-xl border border-slate-500 transition-colors shadow-md flex flex-col items-center justify-center gap-2 text-lg">
+                                    <span class="text-3xl">🏷️</span> <span class="text-xs uppercase tracking-wider">Divers</span>
+                                </button>
+                            </div>
+                            <button data-action="closeModal" data-payload="newItemModalOpen" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-4 rounded-xl transition-colors">Annuler</button>
+                        </div>
+                    </div>`;
+                }
+
+                if (state.noteImagePreviewOpen) {
+                    m += `
+                    <div class="fixed inset-0 bg-black/95 z-[70] flex items-center justify-center p-4 backdrop-blur-md" data-action="closeModal" data-payload="noteImagePreviewOpen">
+                        <div class="relative max-w-6xl w-full max-h-[90vh] flex items-center justify-center">
+                            <button data-action="closeModal" data-payload="noteImagePreviewOpen" class="absolute -top-12 right-0 md:-right-12 bg-slate-800 hover:bg-red-600 text-white w-10 h-10 rounded-full font-bold transition-colors border border-slate-600 shadow-xl z-10 flex items-center justify-center">✕</button>
+                            <img src="${state.currentPreviewImage}" class="max-w-full max-h-[85vh] object-contain rounded-xl border border-slate-700 shadow-2xl" onclick="event.stopPropagation()" />
+                        </div>
+                    </div>`;
+                }
+
+                if (state.diceResult) {
+                    const isSuccess = state.diceResult.successes > 0;
+                    m += `
+                    <div class="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4 backdrop-blur-sm" data-action="closeModal" data-payload="diceResult">
+                        <div class="bg-slate-800 p-8 rounded-3xl border-4 ${isSuccess ? 'border-green-500 shadow-[0_0_30px_rgba(34,197,94,0.3)]' : 'border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.3)]'} text-center space-y-6 max-w-lg w-full transform transition-all scale-100" onclick="event.stopPropagation()">
+                            <h2 class="text-3xl font-bold uppercase tracking-wider text-white">${state.diceResult.statName}</h2>
+                            <p class="text-slate-400 font-bold">SEUIL REQUIS : ${state.diceResult.threshold}+</p>
+                            
+                            <div class="flex justify-center gap-3 flex-wrap py-4 bg-slate-900 rounded-2xl border border-slate-700">
+                                ${state.diceResult.rolls.map(r => {
+                                    let style = "bg-slate-700 text-slate-300 border border-slate-600";
+                                    if (r === 10) style = "bg-yellow-500 text-black border-2 border-yellow-300 shadow-[0_0_15px_#eab308] animate-pulse scale-110";
+                                    else if (r >= state.diceResult.threshold) style = "bg-green-600 text-white border-2 border-green-400 shadow-[0_0_10px_#16a34a]";
+                                    else if (r === 1) style = "bg-red-600 text-white border-2 border-red-400 opacity-80";
+                                    
+                                    return `<div class="w-14 h-14 flex items-center justify-center rounded-xl font-bold text-2xl ${style}">${r}</div>`;
+                                }).join('')}
+                            </div>
+                            
+                            <div class="py-2">
+                                <div class="text-5xl font-aldebaran ${isSuccess ? 'text-green-400' : 'text-red-500 drop-shadow-md'}">${state.diceResult.successes} SUCCÈS</div>
+                            </div>
+                            
+                            <button data-action="closeModal" data-payload="diceResult" class="w-full ${isSuccess ? 'bg-green-600 hover:bg-green-500 shadow-[0_4px_0_#166534] active:shadow-[0_0px_0_#166534]' : 'bg-red-600 hover:bg-red-500 shadow-[0_4px_0_#991b1b] active:shadow-[0_0px_0_#991b1b]'} active:translate-y-1 text-white p-4 rounded-xl font-bold text-xl uppercase tracking-widest transition-all">CONTINUER</button>
+                        </div>
+                    </div>`;
+                }
+
+                return m;
+            }
+
+            function attachEventListeners() {
+                document.querySelectorAll('[data-action]').forEach(el => {
+                    let eventType = 'click';
+                    if (el.tagName === 'FORM') {
+                        eventType = 'submit';
+                    } else if (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') {
+                        eventType = 'change';
+                    }
+                    
+                    el.removeEventListener(eventType, handleEvent);
+                    el.addEventListener(eventType, handleEvent);
+                });
+            }
+
+            render();
+        });
+    </script>
+</body>
+</html>
